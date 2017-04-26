@@ -102,7 +102,7 @@ public class ApplicationTests {
 
 		mockMvc.perform(put(location).content(
 				"{\"firstName\": \"Bilbo\", \"lastName\":\"Baggins\"}")).andExpect(
-						status().isNoContent());
+status().isOk());
 
 		mockMvc.perform(get(location)).andExpect(status().isOk()).andExpect(
 				jsonPath("$.firstName").value("Bilbo")).andExpect(
@@ -120,7 +120,7 @@ public class ApplicationTests {
 
 		mockMvc.perform(
 				patch(location).content("{\"firstName\": \"Bilbo Jr.\"}")).andExpect(
-						status().isNoContent());
+						status().isOk());
 
 		mockMvc.perform(get(location)).andExpect(status().isOk()).andExpect(
 				jsonPath("$.firstName").value("Bilbo Jr.")).andExpect(
@@ -139,4 +139,38 @@ public class ApplicationTests {
 
 		mockMvc.perform(get(location)).andExpect(status().isNotFound());
 	}
+
+	// Anna Skawinska - one of the following tests should pass.
+	// At minimum, Spring's response to PATCH-ing a non-updatable field
+	// should not be a document with the updated field.
+	// Ideally, the reponse should be 400 Bad Request
+
+	@Test
+	public void shouldNotLieInPatchResponse() throws Exception {
+
+		MvcResult mvcResult = mockMvc
+				.perform(post("/people").content("{\"firstName\": \"Anna\", \"lastName\":\"Skawinska\"}"))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.firstName").value("Anna"))
+				.andExpect(jsonPath("$.lastName").value("Skawinska")).andExpect(jsonPath("$.age").value(18))
+				.andReturn();
+
+		String location = mvcResult.getResponse().getHeader("Location");
+
+		mockMvc.perform(patch(location).content("{\"age\": 32}")).andExpect(jsonPath("$.age").value(18));
+	}
+
+	@Test
+	public void shouldNotUpdateNonUpdatableProperty() throws Exception {
+
+		MvcResult mvcResult = mockMvc
+				.perform(post("/people").content("{\"firstName\": \"Anna\", \"lastName\":\"Skawinska\"}"))
+				.andExpect(status().isCreated()).andExpect(jsonPath("$.firstName").value("Anna"))
+				.andExpect(jsonPath("$.lastName").value("Skawinska")).andExpect(jsonPath("$.age").value(18))
+				.andReturn();
+
+		String location = mvcResult.getResponse().getHeader("Location");
+
+		mockMvc.perform(patch(location).content("{\"age\": 32}")).andExpect(status().isBadRequest());
+	}
+
 }
